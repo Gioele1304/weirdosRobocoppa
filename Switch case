@@ -1,44 +1,105 @@
-//definizione degli stati dell'automa
-enum Stato {
-  Dritto, 
-  CurvaDx, 
-  CurvaSx,
-  IncrocioDritto,
-  IncrocioDx,
-  IncrocioSx,
-  IncrocioU,
-  GomitoDx,
-  GomitoSx,
-  Tratteggio,
-  Ricerca,
-  Salita,
-  Discesa,
-  Ostacolo,
-  InizioArena,
-  CercaUscita,
-  FineArena,
-  End,
+#include "MeAuriga.h"
+#include <wire.h>
+
+MeLineFollower lineFinder(PORT_3);
+MeColorSensor cSensorSx(PORT_6);
+MeColorSensor colorSensorDx(PORT_7);
+MeUltrasonicSensor ultraFront(PORT_8);
+MeUltrasonicSensor ultraSide(PORT_9);
+MeGyro gyro;
+MeEncoderOnBoard motorLeft(M1);
+MeEncoderOnBoard motorRight(M2);  
+
+
+enum stato {
+  dritto,
+  curvadx,
+  curvaSXl,
+  incrociod,
+  incrociodx,
+  incrociosx,
+  incrociou,
+  gomitodx,
+  gomitosx,
+  tratteggio,
+  cerca,
+  salita,
+  discesa,
+  ostacolo,
+  inizioarena,
+  cercauscita,
+  finearena,
+  End
 };
 
-//variabile per controllare la situazione attuale
-Stato statoAttuale = Dritto;
+stato statocorrente;
 
 void setup() {
   Serial.begin(9600);
-
-  //impostazione iniziale dei sensori
-  //gestione delle porte
-
-  /*int n = 0b00100;
-    bool res = n & 4;
-    Serial.println(n);
-    Serial.println (res);*/
-
+  gyro.begin();
+  
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  gyro.getAngleX();
+  int colorSx = colorSensorSx.ColorIdentify();//ColorIdentify oppure colorresult
+  int colorDx = colorSensorDx.ColorIdentify();
+  float distFront = ultraFront.distanceCm();
+  float distSide = ultraSide.distanceCm();
 
+  switch (statocorrente){
+    case dritto:
+      break;
+    case curvadx:
+      break;
+  
+    case curvaSXl:
+      break;
+  
+    case incrociod:
+      break;
+  
+    case incrociodx:
+      break;
+  
+    case incrociosx:
+      break;
+  
+    case incrociou:
+      break;
+  
+    case gomitodx:
+      break;
+  
+    case gomitosx:
+      break;
+  
+    case tratteggio:
+      break;
+  
+    case cerca:
+      break;
+  
+    case salita:
+      break;
+  
+    case discesa:
+      break;
+  
+    case ostacolo:
+      break;
+  
+    case inizioarena:
+      break;
+  
+    case cercauscita:
+      break;
+  
+    case finearena:
+      break;
+  
+    case End:
+      break;
+    
+  }
 }
-
-Possiamo pure iniziare a scrivere un BEL SWITCH CASE -- ovviamente TUTTI INSIEME!!!
