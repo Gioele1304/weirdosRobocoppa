@@ -1,0 +1,44 @@
+//definizione degli stati dell'automa
+enum Stato {
+  Dritto, 
+  CurvaDx, 
+  CurvaSx,
+  IncrocioDritto,
+  IncrocioDx,
+  IncrocioSx,
+  IncrocioU,
+  GomitoDx,
+  GomitoSx,
+  Tratteggio,
+  Ricerca,
+  Salita,
+  Discesa,
+  Ostacolo,
+  InizioArena,
+  CercaUscita,
+  FineArena,
+  End,
+};
+
+//variabile per controllare la situazione attuale
+Stato statoAttuale = Dritto;
+
+void setup() {
+  Serial.begin(9600);
+
+  //impostazione iniziale dei sensori
+  //gestione delle porte
+
+  /*int n = 0b00100;
+    bool res = n & 4;
+    Serial.println(n);
+    Serial.println (res);*/
+
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+
+}
+
+Possiamo pure iniziare a scrivere un BEL SWITCH CASE -- ovviamente TUTTI INSIEME!!!
