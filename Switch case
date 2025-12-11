@@ -37,6 +37,11 @@ stato statocorrente;
 void setup() {
   Serial.begin(9600);
   gyro.begin();
+
+ /*int n = 0b00100;
+  bool res = n & 4;
+  Serial.println(n);
+  Serial.println (res);*/
   
 }
 
