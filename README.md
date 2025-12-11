@@ -1,21 +1,51 @@
-# ROBOCOPPA Progetto 25/26
+# ROBOCOPPA Progetto 25/26 – RoboCup Junior Rescue Line
 
 ## 📌 Descrizione
-ROBOCOPPA è un progetto sviluppato per l'anno accademico 2025/2026, focalizzato sulla robotica applicata e sull'innovazione tecnologica.  
-L'obiettivo principale è la progettazione, realizzazione e sperimentazione di un sistema robotico in grado di affrontare sfide di automazione, controllo e interazione con l'ambiente.
+Il progetto ROBOCOPPA 25/26 partecipa alla competizione **RoboCup Junior Rescue Line**, una sfida internazionale di robotica educativa.  
+L’obiettivo è sviluppare un robot autonomo capace di seguire una linea nera su un percorso modulare, affrontando ostacoli e simulando una missione di salvataggio.
 
 ## 🎯 Obiettivi
-- Sviluppare un robot autonomo capace di svolgere compiti complessi.
-- Integrare sensori e attuatori per garantire precisione e affidabilità.
-- Implementare algoritmi di controllo e intelligenza artificiale.
-- Favorire il lavoro di squadra e la collaborazione interdisciplinare.
+- Progettare e programmare un robot in grado di:
+  - Seguire una linea nera su piastrelle variabili.
+  - Superare ostacoli come rampe, ponti e detriti.
+  - Riconoscere e “salvare” le vittime (oggetti di riferimento) portandole in una zona sicura.
+- Applicare conoscenze di elettronica, meccanica e programmazione.
+- Favorire il lavoro di squadra e la creatività.
 
-## 🛠️ Tecnologie utilizzate
-- **Hardware**: microcontrollori, sensori, motori, moduli di comunicazione.
-- **Software**: linguaggi di programmazione (Python, C++), librerie per robotica e AI.
-- **Strumenti**: CAD per la progettazione meccanica, sistemi di versionamento (Git).
+## ⚙️ Tecnologie utilizzate
+- **Hardware**: microcontrollori (Arduino, ESP32), sensori di colore, infrarossi, ultrasuoni, motori DC/servo.
+- **Software**: algoritmi di controllo, riconoscimento dei colori, strategie di navigazione.
+- **Strumenti**: CAD per la progettazione meccanica, Git per il versionamento del codice.
 
-## 🚀 Installazione
-1. Clonare il repository:
-   ```bash
-   git clone https://github.com/tuo-utente/robocopa-25-26.git
+## 📂 Struttura del progetto
+- `src/` → Codice sorgente del robot.
+- `docs/` → Documentazione tecnica e regolamento.
+- `tests/` → Script di test e validazione.
+- `hardware/` → Schemi elettronici e disegni meccanici.
+
+## 📅 Timeline
+- **Settembre 2025** → Avvio del progetto e definizione obiettivi.
+- **Dicembre 2025** → Prototipo iniziale.
+- **Marzo 2026** → Test su campo e ottimizzazione.
+- **Giugno 2026** → Partecipazione alla competizione RoboCup Junior Rescue Line.
+
+## 🏆 Regole principali della Rescue Line
+- Il robot deve seguire una **linea nera** su un percorso modulare.
+- Deve affrontare **ostacoli e deviazioni** senza intervento umano.
+- Alla fine del percorso deve individuare e salvare le **vittime**.
+- Il punteggio viene assegnato in base agli ostacoli superati e alle vittime salvate.
+- Dopo due partecipazioni alla Rescue Line, i team possono passare alla **Rescue Maze**.
+
+## 👥 Team
+Il progetto è sviluppato da studenti e ricercatori nell’ambito della robotica educativa, con competenze in:
+- Programmazione
+- Elettronica
+- Meccanica
+- Intelligenza artificiale
+
+## 📜 Licenza
+Distribuito sotto licenza MIT.  
+Consulta il file `LICENSE` per maggiori dettagli.
+
+---
+✨ *ROBOCOPPA 25/26 – Preparazione alla RoboCup Junior Rescue Line: robotica, innovazione e spirito di squadra!*
