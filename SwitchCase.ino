@@ -1,38 +1,61 @@
 #include "MeAuriga.h"
-#include <wire.h>
-
-MeLineFollower lineFinder(PORT_3);
-MeColorSensor cSensorSx(PORT_6);
-MeColorSensor colorSensorDx(PORT_7);
-MeUltrasonicSensor ultraFront(PORT_8);
-MeUltrasonicSensor ultraSide(PORT_9);
-MeGyro gyro;
-MeEncoderOnBoard motorLeft(M1);
-MeEncoderOnBoard motorRight(M2);  
-
+#include <wire.h> 
 
 enum stato {
-  dritto,
-  curvadx,
-  curvaSXl,
-  incrociod,
-  incrociodx,
-  incrociosx,
-  incrociou,
-  gomitodx,
-  gomitosx,
+  dritto, 
+  curvaDx,
+  curvaSx,
+  incrocioDritto,
+  incrocioDx,
+  incrocioSx,
+  incrocioU,
+  gomitoDx,
+  gomitoSx,
   tratteggio,
-  cerca,
+  ricerca,
   salita,
   discesa,
   ostacolo,
-  inizioarena,
-  cercauscita,
-  finearena,
+  inizioArena,
+  cercaUscita,
+  fineArena,
   End
 };
 
-stato statoAttule;
+// variabile per controllare la situazione attuale
+Stato statoAttuale;
+
+
+// variabili
+// sensore di linea
+MeLineFollower lineFinder(PORT_3);
+int seguilinea;
+
+// sensore di colore dx
+// sensore di colore sx
+MeColorSensor colorsensorDx(PORT_8);
+MeColorSensor colorsensorSx(PORT_9);
+
+// sensore ultrasuoni
+MeUltrasonicSensor ultraFront(PORT_8);
+MeUltrasonicSensor ultraSide(PORT_9);
+
+// giroscopio
+MeGyro gyro;
+float angoloX;
+float angoloY;
+float angoloZ;
+
+//motori
+MeDCMotor motor1(PORT_1);
+MeDCMotor motor2(PORT_2);
+MeEncoderOnBoard motorLeft(M1);
+MeEncoderOnBoard motorRight(M2);
+uint8_t motorSpeed = 100; 
+
+// intervallo sensore colori
+long tempoColore = millis();
+uint8_t colorDx, colorSx;
 
 void setup() {
   Serial.begin(9600);
@@ -46,34 +69,59 @@ void setup() {
 }
 
 void loop() {
-  gyro.getAngleX();
+  
   int colorSx = colorSensorSx.ColorIdentify();//ColorIdentify oppure colorresult
   int colorDx = colorSensorDx.ColorIdentify();
+  
   float distFront = ultraFront.distanceCm();
   float distSide = ultraSide.distanceCm();
+  
+  int seguilinea = lineFinder.readSensors();
+  
+  float angoloX = gyro.getAngleX();
+  float angoloY = gyro.getAngleY();
+  float angoloZ = gyro.getAngleZ();
 
   switch (statoAttuale){
     case dritto:
+      
+      motorspeed = 50;
+      motor1.run(motorspeed);
+      motor2.run(motorspeed);
+
+      if (seguilinea = S1_IN_S2_OUT){
+        statoAttuale = curvaSx;
+      else if (seguilinea = S1_OUT_S2_IN){
+        statoAttuale = curvaDx;
+      else if (seguilinea = S1_OUT_S2_OUT){
+        statoAttuale = ricerca;
+      }}}
+
+      if (distFront <= 20) {
+        statoAttuale = ostacolo;
+      }
+
+      
       break;
-    case curvadx:
+    case curvaDx:
       break;
   
-    case curvaSXl:
+    case curvaSx:
       break;
   
-    case incrociod:
+    case incrocioDritto:
       break;
   
-    case incrociodx:
+    case incrocioDx:
       break;
   
-    case incrociosx:
+    case incrocioSx:
       break;
   
-    case incrociou:
+    case incrocioU:
       break;
   
-    case gomitodx:
+    case gomitoDx:
       break;
   
     case gomitosx:
@@ -82,7 +130,7 @@ void loop() {
     case tratteggio:
       break;
   
-    case cerca:
+    case ricerca:
       break;
   
     case salita:
@@ -94,13 +142,13 @@ void loop() {
     case ostacolo:
       break;
   
-    case inizioarena:
+    case inizioArena:
       break;
   
-    case cercauscita:
+    case cercaUscita:
       break;
   
-    case finearena:
+    case fineArena:
       break;
   
     case End:
