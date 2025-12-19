@@ -1,6 +1,8 @@
 #include "MeAuriga.h"
 #include <wire.h> 
 
+motorspeed = 50;
+
 enum stato {
   dritto, 
   curvaDx,
@@ -85,17 +87,25 @@ void loop() {
   switch (statoAttuale){
     case dritto:
       
-      motorspeed = 50;
       motor1.run(motorspeed);
       motor2.run(motorspeed);
 
-      if (seguilinea = S1_IN_S2_OUT){
+      if (seguilinea == S1_IN_S2_OUT){
         statoAttuale = curvaSx;
-      else if (seguilinea = S1_OUT_S2_IN){
+      else if (seguilinea == S1_OUT_S2_IN){
         statoAttuale = curvaDx;
-      else if (seguilinea = S1_OUT_S2_OUT){
+      else if (seguilinea == S1_OUT_S2_OUT){
         statoAttuale = ricerca;
-      }}}
+      else if (distFront <= 10);
+        statoAttuale=ostacolo;
+      else if (colordx== VERDE)
+        statoAttuale=incrocioDx;
+      else if (colorsx== VERDE)
+        statoAttuale=incrocioSx;
+      else if (colordx== VERDE & colorsx== VERDE)
+        statoAttuale=incrocioU;
+      else if (seguilinea == S1_OUT_S2_OUT)
+        statoAttuale=ricerca;
 
       if (distFront <= 20) {
         statoAttuale = ostacolo;
