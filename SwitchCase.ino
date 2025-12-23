@@ -39,8 +39,8 @@ MeColorSensor colorsensorDx(PORT_8);
 MeColorSensor colorsensorSx(PORT_9);
 
 // sensore ultrasuoni
-MeUltrasonicSensor ultraFront(PORT_8);
-MeUltrasonicSensor ultraSide(PORT_9);
+MeUltrasonicSensor ultraFront(PORT_6);
+MeUltrasonicSensor ultraSide(PORT_7);
 
 // giroscopio
 MeGyro gyro;
@@ -114,10 +114,10 @@ void loop() {
       else if (seguilinea == S1_OUT_S2_OUT){
         statoAttuale=ricerca;
       }
-      else if (float angoloY==20) {
+      else if (float angoloY=>20) {
         statoAttuale=salita;
       }
-      else if (float angoloY==-20) {
+      else if (float angoloY=<-20) {
         statoAttuale=discesa;
       }
       else if (distFront <= 20) {
@@ -126,15 +126,25 @@ void loop() {
       else if (colordx== GRIGIO & colorsx== GRIGIO){
         statoAttuale=inizioArena
       }
-      else if (colordx== VERDE & colorsx== VERDE){
+      else if (colordx== RED & colorsx== RED){
           statoAttuale=End;
       }
       
       break;
     case curvaDx:
+      motor1.run(20);
+      motor2.run(80);
+      if (seguilinea == S1_IN_S2_IN){
+        statoAttuale = dritto;
+      }
       break;
   
     case curvaSx:
+      motor1.run(80);
+      motor2.run(20);
+      if (seguilinea == S1_IN_S2_IN){
+        statoAttuale = dritto;
+      }
       break;
   
     case incrocioDritto:
@@ -159,27 +169,44 @@ void loop() {
       break;
   
     case ricerca:
+      motor1.run(-20);
+      motor2.run(20);
+      delay(1000);
+      motor1.run(20);
+      motor2.run(-20);
+      if (seguilinea == S1_IN_S2_IN || S1_OUT_S2_IN || S1_IN_S2_OUT || S1_OUT_S2_OUT){
+        statoAttuale = dritto;
       break;
   
     case salita:
+      motor1.run(100);
+      motor2.run(100);
       break;
   
     case discesa:
+      motor1.run(20);
+      motor2.run(20);
       break;
   
     case ostacolo:
       break;
   
     case inizioArena:
+      
       break;
   
     case cercaUscita:
+      
       break;
   
     case fineArena:
+      
       break;
   
     case End:
+      motor1.run(0);
+      motor2.run(0);
+      
       break;
     
   }
