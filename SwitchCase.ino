@@ -24,6 +24,39 @@ enum stato {
   End
 };
 
+  int melody[] = {
+    // Flagpole (24 note)
+    2637, 2349, 2217, 2093,
+    1976, 1865, 1760, 1661,
+    1568, 1480, 1397, 1319,
+    1245, 1175, 1109, 1047,
+    988, 932, 880, 831,
+    784, 740, 698, 659,
+  
+    // Course Clear
+    1047, 1319, 1568,
+    2093, 1568, 1319, 1047,
+    784
+  };
+  
+  };
+  int duration[] = {
+    // Flagpole
+    8,8,8,8,
+    8,8,8,8,
+    8,8,8,8,
+    8,8,8,8,
+    8,8,8,8,
+    8,8,8,8,
+  
+    // Course Clear
+    4,4,4,
+    4,4,4,4,
+    2
+  };
+  }
+
+
 // variabile per controllare la situazione attuale
 Stato statoAttuale;
 
@@ -32,6 +65,8 @@ Stato statoAttuale;
 // sensore di linea
 MeLineFollower lineFinder(PORT_3);
 int seguilinea;
+
+MeBuzzer buzzer;
 
 // sensore di colore dx
 // sensore di colore sx
@@ -206,8 +241,33 @@ void loop() {
     case End:
       motor1.run(0);
       motor2.run(0);
-      
+      play;
       break;
     
+  }
+}
+
+
+
+
+
+
+
+void play()
+{
+    for (int thisNote = 0; thisNote < 32; thisNote++) {
+
+    // to calculate the note duration, take one second 
+    // divided by the note type.
+    //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
+    int noteDuration = 1000/noteDurations[thisNote];
+    tone(8, melody[thisNote],noteDuration);
+
+    // to distinguish the notes, set a minimum time between them.
+    // the note's duration + 30% seems to work well:
+    int pauseBetweenNotes = noteDuration * 1.30;
+    delay(pauseBetweenNotes);
+    // stop the tone playing:
+    noTone(8);
   }
 }
