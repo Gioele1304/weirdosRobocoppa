@@ -40,7 +40,7 @@ enum stato {
   };
   
   };
-  int duration[] = {
+  int noteDuration[] = {
     // Flagpole
     8,8,8,8,
     8,8,8,8,
