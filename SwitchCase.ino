@@ -106,7 +106,9 @@ void setup() {
 }
 
 void loop() {
-  
+  int excolorSx=colorSx
+  int excolorRx=colorDx
+
   int colorSx = colorSensorSx.ColorIdentify();//ColorIdentify oppure colorresult
   int colorDx = colorSensorDx.ColorIdentify();
   
@@ -131,19 +133,22 @@ void loop() {
       else if (seguilinea == S1_OUT_S2_IN){
         statoAttuale = curvaDx;
       }
-      else if (seguilinea == S1_OUT_S2_OUT){
-        statoAttuale = ricerca;
+      else if (seguilinea == S1_OUT_S2_OUT & colorDx== WHITE & colorSx== WHITE & excolorDx = WHITE & excolorSx = BLACK){
+        statoAttuale = gomitoSx;
+      }
+      else if (seguilinea == S1_OUT_S2_OUT & colorDx== WHITE & colorSx== WHITE & excolorDx = BLACK & excolorSx = WHITE){
+        statoAttuale = gomitoDx;
       }
       else if (distFront <= 10) {
         statoAttuale=ostacolo;
       }
-      else if (colordx== VERDE){
+      else if (colorDx== VERDE & excolorDx = WHITE){
         statoAttuale=incrocioDx;
       }
-      else if (colorsx== VERDE){
+      else if (colorSx== VERDE & excolorSx = WHITE){
         statoAttuale=incrocioSx;
       }
-      else if (colordx== VERDE & colorsx== VERDE){
+      else if (colorDx== VERDE & colorSx== VERDE & excolorDx = WHITE & excolorSx = WHITE){
         statoAttuale=incrocioU;
       }
       else if (seguilinea == S1_OUT_S2_OUT){
@@ -158,7 +163,7 @@ void loop() {
       else if (distFront <= 20) {
         statoAttuale = ostacolo;
       }
-      else if (colordx== GRIGIO & colorsx== GRIGIO){
+      else if (colordx== GRAY & colorsx== GRAY){
         statoAttuale=inizioArena
       }
       else if (colordx== RED & colorsx== RED){
@@ -182,25 +187,46 @@ void loop() {
       }
       break;
   
-    case incrocioDritto:
-      break;
-  
     case incrocioDx:
+      motor1.run(-80);
+      motor2.run(80);
+      delay(1000);
+      statoAttuale=dritto
       break;
   
     case incrocioSx:
+      motor1.run(80);
+      motor2.run(-80);
+      delay(1000);
+      statoAttuale=dritto
       break;
   
     case incrocioU:
+      motor1.run(80);
+      motor2.run(-80);
+      delay(2000);
+      statoAttuale=dritto;
       break;
   
     case gomitoDx:
+      motor1.run(-80);
+      motor2.run(80);
+      delay(1000);
+      statoAttuale=dritto;
       break;
   
     case gomitosx:
+      motor1.run(80);
+      motor2.run(-80);
+      delay(1000);
+      statoAttuale=dritto;
       break;
   
     case tratteggio:
+      motor1.run(80);
+      motor2.run(80);
+      delay(1000);
+      statoAttuale=ricerca;
       break;
   
     case ricerca:
@@ -209,8 +235,10 @@ void loop() {
       delay(1000);
       motor1.run(20);
       motor2.run(-20);
-      if (seguilinea == S1_IN_S2_IN || S1_OUT_S2_IN || S1_IN_S2_OUT || S1_OUT_S2_OUT){
+      if (seguilinea == S1_IN_S2_IN || S1_OUT_S2_IN || S1_IN_S2_OUT){
         statoAttuale = dritto;
+      else:
+        statoAttuale=ricerca;
       break;
   
     case salita:
