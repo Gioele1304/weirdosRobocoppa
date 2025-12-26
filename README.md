@@ -44,8 +44,8 @@ Il progetto è sviluppato da studenti e ricercatori nell’ambito della robotica
 - Intelligenza artificiale
 
 ## 📜 Licenza
-Distribuito sotto licenza MIT.  
-Consulta il file `LICENSE` per maggiori dettagli.
+Licenza immagini per i partecipanti.  
+Consulta il file `Informativa-consenso-immagini-alunni_RoboCupJuniorAcademy_Catania_15-18aprile2026.pdf` per maggiori dettagli.
 
 ---
 ✨ *ROBOCOPPA 25/26 – Preparazione alla RoboCup Junior Rescue Line: robotica, innovazione e spirito di squadra!*
