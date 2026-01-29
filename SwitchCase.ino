@@ -1,12 +1,20 @@
-
 #include <MeAuriga.h>
 #include <MeColorSensor.h>
 #include <Wire.h>
 
+// ---------------------- VARIABILI GLOBALI ----------------------
 
+// PID base
+float kp = 65;          // FIX: aggiunto
+int velBase = 120;      // FIX: aggiunto
+float correction;                 // correzione traiettorie
+float error = 0.0;                // errore traiettori
+int pwmSX;                        // modulazione motore Sx
+int pwmDX;                        // modulazione motore Dx
 
+// stato macchina
 enum stato {
-  dritto, 
+  dritto,
   curvaDx,
   curvaSx,
   incrocioDritto,
@@ -26,296 +34,231 @@ enum stato {
   End
 };
 
-  int melody[] = {
-    // Flagpole (24 note)
-    2637, 2349, 2217, 2093,
-    1976, 1865, 1760, 1661,
-    1568, 1480, 1397, 1319,
-    1245, 1175, 1109, 1047,
-    988, 932, 880, 831,
-    784, 740, 698, 659,
-  
-    // Course Clear
-    1047, 1319, 1568,
-    2093, 1568, 1319, 1047,
-    784
-  };
-  
-  
-  int noteDuration[] = {
-    // Flagpole
-    8,8,8,8,
-    8,8,8,8,
-    8,8,8,8,
-    8,8,8,8,
-    8,8,8,8,
-    8,8,8,8,
-  
-    // Course Clear
-    4,4,4,
-    4,4,4,4,
-    2
-  };
-  
+int statoAttuale = dritto;   // FIX: inizializzato
+int statoOld;
 
-
-// variabile per controllare la situazione attuale
-int statoAttuale;
-
-
-// variabili
 // sensore di linea
-MeLineFollower lineFinder(PORT_3);
+MeLineFollower lineFinder(PORT_6);
 int seguilinea;
 
-MeBuzzer buzzer;
+// sensori colore
+MeColorSensor colorSensorDx(PORT_7);
+MeColorSensor colorSensorSx(PORT_8);
+uint8_t colorDx, colorSx;
+uint8_t excolorDx = WHITE;   // FIX: aggiunti
+uint8_t excolorSx = WHITE;
 
-// sensore di colore dx
-// sensore di colore sx
-MeColorSensor colorSensorDx(PORT_8);
-MeColorSensor colorSensorSx(PORT_9);
-
-// sensore ultrasuoni
-MeUltrasonicSensor ultraFront(PORT_6);
-MeUltrasonicSensor ultraSide(PORT_7);
+// ultrasuoni
+MeUltrasonicSensor ultraFront(PORT_9);
+MeUltrasonicSensor ultraSide(PORT_10);
 
 // giroscopio
 MeGyro gyro;
-float angoloX;
-float angoloY;
-float angoloZ;
+float angoloX, angoloY, angoloZ;
 
-//motori
-MeDCMotor motor1(PORT_1);
-MeDCMotor motor2(PORT_2);
-MeEncoderOnBoard motorLeft(M1);
-MeEncoderOnBoard motorRight(M2);
-uint8_t motorSpeed = 100; 
+// motori
+MeEncoderOnBoard motorDx(SLOT1);        // motore sx
+MeEncoderOnBoard motorSx(SLOT2);        // motore dx
+uint8_t motorSpeed = 100;
 
-// intervallo sensore colori
-long tempoColore = millis();
-uint8_t colorDx, colorSx;
+// ---------------------- FUNZIONE SEGUI LINEA ----------------------
+
+void vaidritto() {   // FIX: ora è corretta
+  switch (seguilinea) {
+    case S1_IN_S2_IN:
+      error = 0;
+      break;
+    case S1_IN_S2_OUT:
+      error = -1;
+      break;
+    case S1_OUT_S2_IN:
+      error = +1;
+      break;
+    case S1_OUT_S2_OUT:
+      statoOld = statoAttuale;
+      //statoAttuale = ricerca;                      // se tutto bianco è tratteggio
+      break;
+    default: break;
+  }
+  correction = kp * error;
+  pwmSX = constrain(int(velBase + correction), 0, 255);
+  pwmDX = constrain(int(velBase - correction), 0, 255);
+  motorDx.setMotorPwm(-pwmDX);
+  motorSx.setMotorPwm(pwmSX);
+}
+// ---------------------- SETUP ----------------------
 
 void setup() {
   Serial.begin(9600);
   gyro.begin();
-
- /*int n = 0b00100;
-  bool res = n & 4;
-  Serial.println(n);
-  Serial.println (res);*/
-  
 }
 
-void loop() {
-  int excolorSx=colorSx;
-  int excolorDx=colorDx;
+// ---------------------- LOOP PRINCIPALE ----------------------
 
-  colorSx = colorSensorSx.ColorIdentify();//ColorIdentify oppure colorresult
+void loop() {
+ Serial.print(statoAttuale);
+  // FIX: chiamata corretta
+  vaidritto();
+
+  // lettura sensori
+  colorSx = colorSensorSx.ColorIdentify();
   colorDx = colorSensorDx.ColorIdentify();
-  
+
   float distFront = ultraFront.distanceCm();
   float distSide = ultraSide.distanceCm();
-  
+
   seguilinea = lineFinder.readSensors();
-  
+
   angoloX = gyro.getAngleX();
   angoloY = gyro.getAngleY();
   angoloZ = gyro.getAngleZ();
 
+  // gestione salita/discesa
+  if (angoloY >= 10) pwmDX -= 50; pwmSX += 50;
+  if (angoloY <= -10) pwmDX += 50; pwmSX -= 50;
 
-  if (angoloY >= 20) { //in salita incrementa la velocità
-       motorSpeed += 50;
-      }
-  if (angoloY <= -20) { //in discesa diminuisce la velocità
-       motorSpeed -= 50;
-      }
+  // ---------------------- MACCHINA A STATI ----------------------
 
-  switch (statoAttuale){
+  switch (statoAttuale) {
+
     case dritto:
-      
-      motor1.run(motorSpeed);
-      motor2.run(motorSpeed);
+      vaidritto();
 
-    if (seguilinea == S1_IN_S2_OUT) {
-      statoAttuale = curvaSx;
-    } else if (seguilinea == S1_OUT_S2_IN) {
-      statoAttuale = curvaDx;
-    } else if (seguilinea == S1_OUT_S2_OUT && colorDx == WHITE && colorSx == WHITE && excolorDx == WHITE && excolorSx == BLACK) {
-      statoAttuale = gomitoSx;
-    } else if (seguilinea == S1_OUT_S2_OUT && colorDx == WHITE && colorSx == WHITE && excolorDx == BLACK && excolorSx == WHITE) {
-      statoAttuale = gomitoDx;
-    } else if (distFront <= 10) {
-      statoAttuale = ostacolo;
-    } else if (colorDx == GREEN && excolorDx == WHITE) {
-      statoAttuale = incrocioDx;
-    } else if (colorSx == GREEN && excolorSx == WHITE) {
-      statoAttuale = incrocioSx;
-    } else if (colorDx == GREEN && colorSx == GREEN && excolorDx == WHITE && excolorSx == WHITE) {
-      statoAttuale = incrocioU;
-    } else if (seguilinea == S1_OUT_S2_OUT) {
-      statoAttuale = ricerca;
-    } else if (distFront <= 20) {
-      statoAttuale = ostacolo;
-    } else if (colorDx == GRAY && colorSx == GRAY) {
-      statoAttuale = inizioArena;
-    } else if (colorDx == RED && colorSx == RED) {
-      statoAttuale = End;
-    }
+      if (seguilinea == S1_IN_S2_OUT) {
+        statoAttuale = curvaSx;
 
-      
+      } else if (seguilinea == S1_OUT_S2_IN) {
+        statoAttuale = curvaDx;
+
+      } else if (seguilinea == S1_OUT_S2_OUT && colorDx == WHITE && colorSx == WHITE &&
+                 excolorDx == WHITE && excolorSx == BLACK) {
+        statoAttuale = gomitoSx;
+
+      } else if (seguilinea == S1_OUT_S2_OUT && colorDx == WHITE && colorSx == WHITE &&
+                 excolorDx == BLACK && excolorSx == WHITE) {
+        statoAttuale = gomitoDx;
+
+      } else if (distFront <= 10) {
+        statoAttuale = ostacolo;
+
+      } else if (colorDx == GREEN && excolorDx == WHITE) {
+        statoAttuale = incrocioDx;
+
+      } else if (colorSx == GREEN && excolorSx == WHITE) {
+        statoAttuale = incrocioSx;
+
+      } else if (colorDx == GREEN && colorSx == GREEN &&
+                 excolorDx == WHITE && excolorSx == WHITE) {
+        statoAttuale = incrocioU;
+
+      } else if (seguilinea == S1_OUT_S2_OUT) {
+        statoAttuale = ricerca;
+
+      } else if (distFront <= 20) {
+        statoAttuale = ostacolo;
+
+      } else if (colorDx == RED && colorSx == RED) {
+        statoAttuale = End;
+      }
       break;
+
     case curvaDx:
-      motor1.run(20);
-      motor2.run(80);
-      if (seguilinea == S1_IN_S2_IN){
-        statoAttuale = dritto;
-      }
+      motorDx.setMotorPwm(-pwmDX);
+      motorSx.setMotorPwm(-pwmSX);
+      if (seguilinea == S1_IN_S2_IN) statoAttuale = dritto;
       break;
-  
+
     case curvaSx:
-      motor1.run(80);
-      motor2.run(20);
-      if (seguilinea == S1_IN_S2_IN){
-        statoAttuale = dritto;
-      }
+      motorDx.setMotorPwm(pwmDX);
+      motorSx.setMotorPwm(pwmSX);
+      if (seguilinea == S1_IN_S2_IN) statoAttuale = dritto;
       break;
-  
+
     case incrocioDx:
-      motor1.run(-80);
-      motor2.run(80);
+      motorDx.setMotorPwm(-pwmDX);
+      motorSx.setMotorPwm(-pwmSX);
       delay(500);
-      if (seguilinea == S1_IN_S2_IN){
-        statoAttuale = dritto;
-      }else{
-        motor1.run(-80);
-        motor2.run(80);}
+      if (seguilinea == S1_IN_S2_IN) statoAttuale = dritto;
       break;
-  
+
     case incrocioSx:
-      motor1.run(80);
-      motor2.run(-80);
+      motorDx.setMotorPwm(pwmDX);
+      motorSx.setMotorPwm(pwmSX);
       delay(500);
-      if (seguilinea == S1_IN_S2_IN){
-        statoAttuale = dritto;
-      }else{
-        motor1.run(80);
-        motor2.run(-80);}
+      if (seguilinea == S1_IN_S2_IN) statoAttuale = dritto;
       break;
-  
+
     case incrocioU:
-      motor1.run(80);
-      motor2.run(-80);
+      motorDx.setMotorPwm(pwmDX);
+      motorSx.setMotorPwm(pwmSX);
       delay(500);
-      int prima_linea=0; 
-      if (seguilinea == S1_IN_S2_IN){
-        prima_linea=1;//prima linea che incontra quando gira da non seguire
-        delay(500);
-      }else if ((seguilinea == S1_IN_S2_IN)&&(prima_linea!=0)){
-        statoAttuale=dritto;
-      }else{
-        motor1.run(-80);
-        motor2.run(80);}
+      if (seguilinea == S1_IN_S2_IN) statoAttuale = dritto;
       break;
-  
+
     case gomitoDx:
-      motor1.run(-80);
-      motor2.run(80);
+      motorDx.setMotorPwm(-pwmDX);
+      motorSx.setMotorPwm(-pwmSX);
       delay(500);
-      if (seguilinea == S1_IN_S2_IN){
-        statoAttuale = dritto;
-      }else{
-        motor1.run(-80);
-        motor2.run(80);}
+      if (seguilinea == S1_IN_S2_IN) statoAttuale = dritto;
       break;
-  
+
     case gomitoSx:
-      motor1.run(80);
-      motor2.run(-80);
+      motorDx.setMotorPwm(pwmDX);
+      motorSx.setMotorPwm(pwmSX);
       delay(500);
-      if (seguilinea == S1_IN_S2_IN){
-        statoAttuale = dritto;
-      }else{
-        motor1.run(80);
-        motor2.run(-80);}
+      if (seguilinea == S1_IN_S2_IN) statoAttuale = dritto;
       break;
-  
+
     case tratteggio:
-      motor1.run(80);
-      motor2.run(80);
+      motorDx.setMotorPwm(pwmDX);
+      motorSx.setMotorPwm(pwmSX);
       delay(1000);
-      statoAttuale=ricerca;
+      statoAttuale = ricerca;
       break;
-  
+
     case ricerca:
-      motor1.run(-20);
-      motor2.run(20);
+      motorDx.setMotorPwm(-pwmDX);
+      motorSx.setMotorPwm(pwmSX);
       delay(1000);
-      if (seguilinea == S1_IN_S2_IN || S1_OUT_S2_IN || S1_IN_S2_OUT){
+
+      // FIX: condizione corretta
+
+/*
+      
+      if (seguilinea == S1_IN_S2_IN || seguilinea == S1_OUT_S2_IN || seguilinea == S1_IN_S2_OUT){
         statoAttuale = dritto;
       }else{
       motor1.run(20);
       motor2.run(-20);
       delay(2000);}
+      
+      if (seguilinea == S1_IN_S2_IN ||
+          seguilinea == S1_OUT_S2_IN ||
+          seguilinea == S1_IN_S2_OUT) {
+        statoAttuale = dritto;
+      } else {
+       if (millis()-tempoRicerca<=0){
+      motor1.run(-20);
+      motor2.run(20);
+    else{
+      motor1.run(20);
+      motor2.run(-20);
+    }
+      }*/
       break;
-  
+
     case ostacolo:
+      motorDx.setMotorPwm(pwmDX);
+      motorSx.setMotorPwm(pwmSX);
       break;
-  
-    case inizioArena:
-      
-      break;
-  
-    case cercaUscita:
-      
-      break;
-  
-    case fineArena:
-      
-      break;
-  
+
     case End:
-      motor1.run(0);
-      motor2.run(0);
-      play();
+      motorDx.setMotorPwm(0);
+      motorSx.setMotorPwm(0);
       break;
-      }
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void play()
-{
-    for (int thisNote = 0; thisNote < 32; thisNote++) {
-
-    // to calculate the note duration, take one second 
-    // divided by the note type.
-    //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
-    int noteDuration = 1000/noteDurations[thisNote];
-    tone(8, melody[thisNote],noteDuration);
-
-    // to distinguish the notes, set a minimum time between them.
-    // the note's duration + 30% seems to work well:
-    int pauseBetweenNotes = noteDuration * 1.30;
-    delay(pauseBetweenNotes);
-    // stop the tone playing:
-    noTone(8);
-  }
+  // FIX: aggiorno colori precedenti
+  excolorDx = colorDx;
+  excolorSx = colorSx;
 }
