@@ -1,18 +1,29 @@
-#include <MeAuriga.h>
-#include <MeColorSensor.h>
+/*---------------------LIBRERIE---------------------------*/
+#include "MeAuriga.h"   //librerie Makeblock
 #include <Wire.h>
+//#include <cmath.h>
+/*--------------------------------------------------------*/
 
-// ---------------------- VARIABILI GLOBALI ----------------------
+/*-------------------VALORI DA IMPOSTARE------------------*/
 
-// PID base
-float kp = 65;          // FIX: aggiunto
-int velBase = 120;      // FIX: aggiunto
-float correction;                 // correzione traiettorie
-float error = 0.0;                // errore traiettori
-int pwmSX;                        // modulazione motore Sx
-int pwmDX;                        // modulazione motore Dx
+//HARDWARE
+MeEncoderOnBoard motorDx(SLOT1);        // motore sx
+MeEncoderOnBoard motorSx(SLOT2);        // motore dx
+MeLineFollower lineFinder(PORT_6);      // sensore di linea
+MeColorSensor colorsensorDx(PORT_7);    // sensore di colore dx
+MeColorSensor colorsensorSx(PORT_8);    // sensore di colore sx
+MeUltrasonicSensor ultraFront(PORT_9);  // sensore ultrasuoni frontale
+MeUltrasonicSensor ultraSide(PORT_10);  // sensore ultrasuoni laterale
 
-// stato macchina
+//SOFTWARE
+#define velocitaMotore 90                 //velocità base del motore
+#define correggiTraiettoria 60         //valore coefficiente correttivo traiettoria
+#define numeroStatoCorrente 0             //stato iniziale
+#define numeroStatoOld 0                  //stato precedente iniziale
+
+/*--------------------------------------------------------*/
+
+/*------------------DICHIARAZIONI VARIABILI---------------*/
 enum stato {
   dritto,
   curvaDx,
@@ -26,7 +37,6 @@ enum stato {
   tratteggio,
   ricerca,
   salita,
-  discesa,
   ostacolo,
   inizioArena,
   cercaUscita,
@@ -34,36 +44,84 @@ enum stato {
   End
 };
 
-int statoAttuale = dritto;   // FIX: inizializzato
-int statoOld;
+stato statoAttuale = numeroStatoCorrente;  // variabile per controllare la situazione attuale
+stato statoOld = numeroStatoOld;            // variabile per ricordare il vecchio stato
 
-// sensore di linea
-MeLineFollower lineFinder(PORT_6);
-int seguilinea;
+// MOTORE
+int velBase = velocitaMotore;     // velocità base motore
+float kp = correggiTraiettoria;   // coefficiente correttivo traiettoria
+float correction;                 // correzione traiettorie
+float error = 0.0;                // errore traiettori
+int pwmSX;                        // modulazione motore Sx
+int pwmDX;                        // modulazione motore Dx
+float Salita;
+float Discesa;
+float compSalita;
+float tempoRicerca;
+float durataRicerca;
 
-// sensori colore
-MeColorSensor colorSensorDx(PORT_7);
-MeColorSensor colorSensorSx(PORT_8);
-uint8_t colorDx, colorSx;
-uint8_t excolorDx = WHITE;   // FIX: aggiunti
-uint8_t excolorSx = WHITE;
+// TEMPO E GIROSCOPIO
+long time0, time;             // tempo iniziale e attuale
+MeGyro gyro;                  // variabile giroscopio
+float asseX0, asseY0, asseZ0; // posizione assi giroscopio all'accensione
+float asseX, asseY, asseZ;    // posizione assi giroscopio
+float rollX, pitchY, yawZ;    // rotazioni lungo assi
 
-// ultrasuoni
-MeUltrasonicSensor ultraFront(PORT_9);
-MeUltrasonicSensor ultraSide(PORT_10);
+// SEGUILINEA
+int seguilinea;           // variabile per seguilinea (S1_IN_S2_IN / S1_IN_S2_OUT / S1_OUT_S2_IN / S1_OUT_S2_OUT)
 
-// giroscopio
-MeGyro gyro;
-float angoloX, angoloY, angoloZ;
+// SENSORI COLORE DX & SX
+uint8_t excolorDx, excolorSx;
+uint8_t colorDx, colorSx;   //  Risultati sensori colore
+uint16_t redvalueDX = 0, greenvalueDX = 0, bluevalueDX = 0, colorvalueDX = 0;
+uint16_t redvalueSX = 0, greenvalueSX = 0, bluevalueSX = 0, colorvalueSX = 0;
+long colorcodeDX = 0, colorcodeSX = 0;
 
-// motori
-MeEncoderOnBoard motorDx(SLOT1);        // motore sx
-MeEncoderOnBoard motorSx(SLOT2);        // motore dx
-uint8_t motorSpeed = 100;
+// ULTRASUONI
+float distFronte, distLato; // distanza sensori ultrasuoni
 
-// ---------------------- FUNZIONE SEGUI LINEA ----------------------
+/*--------------------------------------------------------*/
 
-void vaidritto() {   // FIX: ora è corretta
+
+/*--------------------------------------------------------------------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------------------------TEST SENSORI----------------------------*/
+/*--------------------------------------------------------------------------------------------------------------------------------------*/
+
+
+/*---------------------------------------------------------------------------------------TEST GIROSCOPIO--------------------------------*/
+void testgyro()
+{
+  time = millis() - time0;             //tempo attuale
+
+  gyro.update();
+  asseX = gyro.getAngleX();   // posizione asse X iniziale
+  asseY = gyro.getAngleY();   // posizione asse Y iniziale
+  asseZ = gyro.getAngleZ();   // posizione asse Z iniziale
+  rollX = asseX - asseX0;     // rotazione asse X
+  pitchY = asseY - asseY0;    // rotazione asse Y
+  yawZ = asseZ - asseZ0;      // rotazione asse Z
+
+  Serial.print(time);
+  Serial.println("  -------GIROSCOPIO--------");
+  Serial.print("X:");
+  Serial.print(asseX);
+  Serial.print(" Y:");
+  Serial.print(asseY);
+  Serial.print(" Z:");
+  Serial.println(asseZ);
+  Serial.print("RollX:");
+  Serial.print(rollX);
+  Serial.print(" PitchY:");
+  Serial.print(pitchY);
+  Serial.print(" YawZ:");
+  Serial.println(yawZ);
+
+  asseX0 = asseX;               // posizione asse X precedente
+  asseY0 = asseY;               // posizione asse Y precedente
+  asseZ0 = asseZ;               // posizione asse Z precedente
+}
+
+void vaidritto() {
   switch (seguilinea) {
     case S1_IN_S2_IN:
       error = 0;
@@ -76,7 +134,7 @@ void vaidritto() {   // FIX: ora è corretta
       break;
     case S1_OUT_S2_OUT:
       statoOld = statoAttuale;
-      //statoAttuale = ricerca;                      // se tutto bianco è tratteggio
+      statoAttuale = ricerca;                      // se tutto bianco è tratteggio
       break;
     default: break;
   }
@@ -86,52 +144,56 @@ void vaidritto() {   // FIX: ora è corretta
   motorDx.setMotorPwm(-pwmDX);
   motorSx.setMotorPwm(pwmSX);
 }
-// ---------------------- SETUP ----------------------
 
+
+/*---------------------------------------------------------------------------------------------SETUP------------------------------------*/
 void setup() {
-  Serial.begin(9600);
-  gyro.begin();
+  Serial.begin(115200);
+  time0 = millis();            // inizializzo tempo
+  gyro.begin();                // giroscopio
+  asseX0 = gyro.getAngleX();   // posizione asse X iniziale
+  asseY0 = gyro.getAngleY();   // posizione asse Y iniziale
+  asseZ0 = gyro.getAngleZ();   // posizione asse Z iniziale
+
+  /*MAGIA NERA MOTORI*/
+  //Set PWM 8KHz
+  TCCR1A = _BV(WGM10);
+  TCCR1B = _BV(CS11) | _BV(WGM12);
+  TCCR2A = _BV(WGM21) | _BV(WGM20);
+  TCCR2B = _BV(CS21);
+  motorDx.setPulse(9);
+  motorSx.setPulse(9);
+  /*FINE MAGIA NERA MOTORI*/
+
+  // IMPOSTAZIONI INIZIALI SENSORI COLORI
+  colorsensorDx.SensorInit();
+  colorsensorSx.SensorInit();
+
+
+
 }
-
-// ---------------------- LOOP PRINCIPALE ----------------------
-
+/*---------------------------------------------------------------------------------------------LOOP-------------------------------------*/
 void loop() {
- Serial.print(statoAttuale);
-  // FIX: chiamata corretta
-  vaidritto();
 
   // lettura sensori
-  colorSx = colorSensorSx.ColorIdentify();
-  colorDx = colorSensorDx.ColorIdentify();
+  colorSx = colorsensorSx.ColorIdentify();
+  colorDx = colorsensorDx.ColorIdentify();
 
   float distFront = ultraFront.distanceCm();
   float distSide = ultraSide.distanceCm();
 
   seguilinea = lineFinder.readSensors();
 
-  angoloX = gyro.getAngleX();
-  angoloY = gyro.getAngleY();
-  angoloZ = gyro.getAngleZ();
-
-  // gestione salita/discesa
-  if (angoloY >= 10) pwmDX -= 50; pwmSX += 50;
-  if (angoloY <= -10) pwmDX += 50; pwmSX -= 50;
-
-  // ---------------------- MACCHINA A STATI ----------------------
+  asseX0 = gyro.getAngleX();   // posizione asse X iniziale
+  asseY0 = gyro.getAngleY();   // posizione asse Y iniziale
+  asseZ0 = gyro.getAngleZ();
 
   switch (statoAttuale) {
-
     case dritto:
       vaidritto();
 
-      if (seguilinea == S1_IN_S2_OUT) {
-        statoAttuale = curvaSx;
-
-      } else if (seguilinea == S1_OUT_S2_IN) {
-        statoAttuale = curvaDx;
-
-      } else if (seguilinea == S1_OUT_S2_OUT && colorDx == WHITE && colorSx == WHITE &&
-                 excolorDx == WHITE && excolorSx == BLACK) {
+      if (seguilinea == S1_OUT_S2_OUT && colorDx == WHITE && colorSx == WHITE &&
+          excolorDx == WHITE && excolorSx == BLACK) {
         statoAttuale = gomitoSx;
 
       } else if (seguilinea == S1_OUT_S2_OUT && colorDx == WHITE && colorSx == WHITE &&
@@ -153,25 +215,17 @@ void loop() {
 
       } else if (seguilinea == S1_OUT_S2_OUT) {
         statoAttuale = ricerca;
-
-      } else if (distFront <= 20) {
-        statoAttuale = ostacolo;
+       
+      float asseX = gyro.getAngleX();   // posizione asse X iniziale
+      float asseY = gyro.getAngleY();   // posizione asse Y iniziale
+      float asseZ = gyro.getAngleZ();
+     
+      } else if ( asseY > asseY0 || asseY > asseY0) {
+        statoAttuale = salita;
 
       } else if (colorDx == RED && colorSx == RED) {
         statoAttuale = End;
       }
-      break;
-
-    case curvaDx:
-      motorDx.setMotorPwm(-pwmDX);
-      motorSx.setMotorPwm(-pwmSX);
-      if (seguilinea == S1_IN_S2_IN) statoAttuale = dritto;
-      break;
-
-    case curvaSx:
-      motorDx.setMotorPwm(pwmDX);
-      motorSx.setMotorPwm(pwmSX);
-      if (seguilinea == S1_IN_S2_IN) statoAttuale = dritto;
       break;
 
     case incrocioDx:
@@ -217,35 +271,28 @@ void loop() {
       break;
 
     case ricerca:
-      motorDx.setMotorPwm(-pwmDX);
-      motorSx.setMotorPwm(pwmSX);
-      delay(1000);
-
       // FIX: condizione corretta
-
-/*
-      
-      if (seguilinea == S1_IN_S2_IN || seguilinea == S1_OUT_S2_IN || seguilinea == S1_IN_S2_OUT){
-        statoAttuale = dritto;
-      }else{
-      motor1.run(20);
-      motor2.run(-20);
-      delay(2000);}
-      
-      if (seguilinea == S1_IN_S2_IN ||
-          seguilinea == S1_OUT_S2_IN ||
-          seguilinea == S1_IN_S2_OUT) {
-        statoAttuale = dritto;
-      } else {
-       if (millis()-tempoRicerca<=0){
-      motor1.run(-20);
-      motor2.run(20);
-    else{
-      motor1.run(20);
-      motor2.run(-20);
-    }
-      }*/
+      unsigned long durataRicerca = millis() - tempoRicerca;
+      if (durataRicerca < 10000 ) {
+        motorDx.setMotorPwm(-pwmDX);
+        motorSx.setMotorPwm(pwmSX);
+        if (seguilinea == S1_IN_S2_IN || seguilinea == S1_OUT_S2_IN || seguilinea == S1_IN_S2_OUT) {
+          statoAttuale = dritto;
+        }
+      } else if (durataRicerca >= 10000) {
+        statoAttuale = tratteggio;
+      }
       break;
+
+    case salita:
+      float asseX = gyro.getAngleX();   // posizione asse X iniziale
+      float asseY = gyro.getAngleY();   // posizione asse Y iniziale
+      float asseZ = gyro.getAngleZ();
+      if (asseY > asseY0){
+        pwmSX = pwmSX+20 && pwmDX+20;
+      }else if (asseY < asseY0){
+        pwmSX = pwmSX-20 && pwmDX-20;
+      }
 
     case ostacolo:
       motorDx.setMotorPwm(pwmDX);
@@ -256,9 +303,10 @@ void loop() {
       motorDx.setMotorPwm(0);
       motorSx.setMotorPwm(0);
       break;
+
   }
 
   // FIX: aggiorno colori precedenti
-  excolorDx = colorDx;
-  excolorSx = colorSx;
+  uint8_t excolorDx = colorDx;
+  uint8_t excolorSx = colorSx;
 }
