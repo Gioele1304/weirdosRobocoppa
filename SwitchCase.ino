@@ -1,4 +1,4 @@
-  #include <MeAuriga.h>
+#include <MeAuriga.h>
   #include <MeColorSensor.h>
   #include <Wire.h>
   
@@ -11,11 +11,10 @@
   float error = 0.0;                // errore traiettori
   int pwmSX;                        // modulazione motore Sx
   int pwmDX;                        // modulazione motore Dx
-  float Salita;
-  float Discesa;
   float compSalita;
-  float tempoRicerca;
-  float durataRicerca;
+  bool rotazioneAttiva;
+  int versoRotazione;
+  
 
   MeRGBLed led( 0, 12 );
   
@@ -56,6 +55,7 @@
   // giroscopio
   MeGyro gyro;
   float angoloX, angoloY, angoloZ;
+  float exangoloZ;
   
   // motori
   MeEncoderOnBoard motorDx(SLOT1);        // motore sx
@@ -75,13 +75,12 @@
         led.setColor( 4, 40, 10, 40);
         led.show();
         error = 0;
-        if (colorSx == GREEN && excolorSx== WHITE){
+        if (colorSx == GREEN && colorDx == GREEN && excolorSx== WHITE && excolorDx==WHITE){
+          statoAttuale=incrocioU;}
+        else if (colorSx == GREEN && excolorSx== WHITE){
           statoAttuale=incrocioSx;}
         else if (colorDx == GREEN && excolorDx== WHITE){
           statoAttuale=incrocioDx;}
-        else if (colorSx == GREEN && colorDx == GREEN && excolorSx== WHITE && excolorDx==WHITE){
-          statoAttuale=incrocioU;
-        }
         break;
       case S1_IN_S2_OUT:
         led.setColor( 2, 40, 10, 40);     //accendo i 2 led frontali (SX)
@@ -107,7 +106,8 @@
         break;
       default: break;
     }
-    correction = kp * error;
+
+    correction = (kp * error) + compSalita;
     pwmSX = constrain(int(velBase + correction), 0, 255);
     pwmDX = constrain(int(velBase - correction), 0, 255);
     motorDx.setMotorPwm(-pwmDX);
@@ -125,8 +125,6 @@
   
   void loop() {
     Serial.print(statoAttuale);
-    // FIX: chiamata corretta
-    vaidritto();
   
     // lettura sensori
     colorSx = colorSensorSx.ColorIdentify();
@@ -142,34 +140,39 @@
     angoloZ = gyro.getAngleZ();
   
     // gestione salita/discesa
-    /*if (angoloY >= 10) pwmDX -= 50; pwmSX += 50;
-      if (angoloY <= -10) pwmDX += 50; pwmSX -= 50;*/
+    if (angoloX >= 10){
+      compSalita = 50;}
+    else if (angoloX <= -10){
+      compSalita = -50;}
+    else{
+      compSalita = 0;}
   
     // ---------------------- MACCHINA A STATI ----------------------
   
     switch (statoAttuale) {        
 
       case linefollow:
-        vaidritto;
+        vaidritto();
       break;
 
       case ricerca:
         // FIX: condizione corretta
-        unsigned long durataRicerca = millis() - tempoRicerca;
-        motorDx.setMotorPwm(-velBase);
-        motorSx.setMotorPwm(-velBase);
-        delay(1000);
-        motorDx.setMotorPwm(velBase);
-        motorSx.setMotorPwm(velBase);
-        delay(2000);
-        motorDx.setMotorPwm(-velBase);
-        motorSx.setMotorPwm(-velBase);
-        delay(1000);
-        
-          if (seguilinea == S1_IN_S2_IN || seguilinea == S1_OUT_S2_IN || seguilinea == S1_IN_S2_OUT) {
-            statoAttuale = linefollow;
-          }
-         statoAttuale=tratteggio;
+ if (seguilinea == S1_IN_S2_IN || seguilinea == S1_OUT_S2_IN || seguilinea == S1_IN_S2_OUT) {
+        statoAttuale = linefollow;
+      } else {
+        unsigned long tempoRicerca = millis();
+        unsigned long durataRicerca = millis()-tempoRicerca;
+          if (durataRicerca<=5000 ){
+              motorDx.setMotorPwm(pwmDX);
+              motorSx.setMotorPwm(pwmSX);
+          }else if(durataRicerca<=10000){
+              motorDx.setMotorPwm(-pwmDX);
+              motorSx.setMotorPwm(-pwmSX);
+          }else if(durataRicerca<=15000){
+              motorDx.setMotorPwm(pwmDX);
+              motorSx.setMotorPwm(pwmSX);
+              statoAttuale = tratteggio;}
+      }
         break;
       
       case incrocioDx:
@@ -194,15 +197,28 @@
         break;
 
       case tratteggio:
-        motorDx.setMotorPwm(pwmDX);
+        motorDx.setMotorPwm(-pwmDX);
         motorSx.setMotorPwm(pwmSX);
-        delay(1000);
+        delay(2000);
         statoAttuale = ricerca;
         break;
   
       case ostacolo:
-        motorDx.setMotorPwm(pwmDX);
-        motorSx.setMotorPwm(pwmSX);
+        ruota90(+1); //gira 90° dx
+         motorDx.setMotorPwm(-pwmDX);
+         motorSx.setMotorPwm(pwmSX);
+        delay(1500); //avanza per 1,5 sec.
+        ruota90(-1); //gira 90° sx
+         motorDx.setMotorPwm(pwmDX);
+         motorSx.setMotorPwm(pwmSX);
+        delay(2000); //avanza per 2 sec.
+        ruota90(-1);//gira 90° sx
+         motorDx.setMotorPwm(pwmDX);
+         motorSx.setMotorPwm(pwmSX);//avanza finchè non trova la linea.
+      if(seguilinea== S1_IN_S2_IN){
+        delay(750);
+        ruota90(+1); //gira 90° dx
+        statoAttuale=ricerca;}
         break;
   
       case End:
@@ -216,3 +232,36 @@
     excolorDx = colorDx;
     excolorSx = colorSx;
   }
+
+
+
+
+
+  // ROTAZIONE DI 90° CON GYRO
+bool ruota90(int verso) { // verso = +1 destra, -1 sinistra
+
+  if (!rotazioneAttiva) {
+    exangoloZ = gyro.getAngleZ();
+    versoRotazione = verso;
+    rotazioneAttiva = true;
+  }
+
+  motorDx.setMotorPwm(-80 * versoRotazione);
+  motorSx.setMotorPwm( 80 * versoRotazione);
+
+  float delta = gyro.getAngleZ() - exangoloZ;
+
+  if (versoRotazione == 1 && delta >= 90) {
+    rotazioneAttiva = false;
+  }
+  else if (versoRotazione == -1 && delta <= -90) {
+    rotazioneAttiva = false;
+  }
+
+  if (!rotazioneAttiva) {
+    motorDx.setMotorPwm(0);
+    motorSx.setMotorPwm(0);
+    return true;   // rotazione completata
+  }
+  return false;    // ancora in corso
+}
